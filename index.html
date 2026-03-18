@@ -1,0 +1,108 @@
+<!DOCTYPE html>
+<html lang="pt-br">
+<head>
+    <meta charset="UTF-8">
+    <title>APAC - Advanced Predictive Analysis</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js"></script>
+</head>
+<body class="bg-slate-900 text-white font-sans p-4">
+    <div class="max-w-7xl mx-auto grid grid-cols-1 lg:grid-cols-12 gap-6">
+       
+        <div class="lg:col-span-4 bg-slate-800 p-8 rounded-2xl border border-slate-700 h-fit">
+            <h1 class="text-3xl font-black italic text-emerald-400 mb-8 tracking-tighter">APAC <span class="text-white font-light text-xs">RS v1.0</span></h1>
+            <div class="space-y-4">
+                <input id="origem" type="text" placeholder="Origem (Ex: Porto Seco, Porto Alegre)" class="w-full p-3 bg-slate-900 rounded-xl border border-slate-700 text-sm">
+                <input id="destino" type="text" placeholder="Destino (Ex: Campo Bom, RS)" class="w-full p-3 bg-slate-900 rounded-xl border border-slate-700 text-sm">
+                <div class="grid grid-cols-2 gap-4">
+                    <input id="kml" type="number" value="5.5" step="0.1" class="w-full p-3 bg-slate-900 rounded-xl border border-slate-700 text-sm">
+                    <input id="preco" type="number" value="6.15" step="0.01" class="w-full p-3 bg-slate-900 rounded-xl border border-slate-700 text-sm">
+                </div>
+                <button onclick="calcularReal()" id="btn" class="w-full py-5 bg-emerald-600 hover:bg-emerald-500 font-black rounded-2xl transition shadow-xl uppercase tracking-widest text-sm">Diagnosticar Rota GPS</button>
+            </div>
+        </div>
+
+
+        <div id="relatorio-area" class="lg:col-span-8 bg-slate-800 p-8 rounded-2xl border border-emerald-500/20 hidden shadow-2xl">
+            <div class="flex justify-between items-center mb-6 border-b border-slate-700 pb-4">
+                <h2 class="text-xl font-black italic">DIAGNÓSTICO <span class="text-emerald-500 underline">APAC</span></h2>
+                <span id="res-dist" class="text-xs text-slate-400 font-bold bg-slate-900 px-3 py-1 rounded"></span>
+            </div>
+
+
+            <div class="grid grid-cols-1 md:grid-cols-12 gap-6 mb-8">
+                <div class="md:col-span-5 text-center flex flex-col items-center">
+                    <p class="text-[9px] text-slate-500 uppercase font-bold mb-1">Perda Potencial</p>
+                    <h3 id="res-porcentagem" class="text-5xl font-black text-emerald-400">0%</h3>
+                    <div class="w-full h-44 mt-4">
+                        <canvas id="graficoPizza"></canvas>
+                    </div>
+                </div>
+                <div class="md:col-span-7 space-y-4">
+                    <div class="bg-red-500/10 p-4 rounded-xl border border-red-500/20 text-center shadow-inner">
+                        <p class="text-[9px] text-red-400 uppercase font-bold">Prejuízo Financeiro na Rota</p>
+                        <h4 id="res-prejuizo" class="text-4xl font-black text-red-500">R$ 0,00</h4>
+                    </div>
+                    <div class="text-[11px] space-y-2 text-slate-400 bg-slate-900 p-3 rounded-lg border border-slate-700">
+                        <div class="flex justify-between border-b border-slate-700 pb-2"><span>Consumo Real:</span> <span id="res-real" class="text-white font-bold text-lg"></span></div>
+                        <div class="flex justify-between"><span>Consumo Ideal:</span> <span id="res-ideal" class="text-emerald-400 font-bold text-lg"></span></div>
+                    </div>
+                </div>
+            </div>
+
+
+            <<div class="mt-8 p-6 bg-slate-900/50 rounded-2xl border border-dashed border-slate-600">
+    <h3 class="text-emerald-400 font-bold uppercase text-xs mb-4 italic italic">Análise de Frota (Massa)</h3>
+    <input type="file" id="arquivoExcel" class="text-xs text-slate-400 mb-4 block w-full">
+    <button onclick="subirPlanilha()" id="btn-frota" class="px-6 py-3 bg-emerald-700 hover:bg-emerald-600 rounded-xl font-bold text-[10px] uppercase transition">
+        Processar Planilha de Viagens
+    </button>
+</div>
+
+<div id="resultado-frota" class="hidden mt-6 space-y-2">
+    <h4 class="text-white font-bold text-sm uppercase">Relatório de Gargalos Identificados:</h4>
+    <div id="lista-gargalos" class="text-[11px] space-y-1"></div>
+</div>
+
+<script>
+async function subirPlanilha() {
+    const fileInput = document.getElementById('arquivoExcel');
+    if (!fileInput.files[0]) return alert("Selecione um arquivo!");
+
+    const btn = document.getElementById('btn-frota');
+    btn.innerText = "ANALISANDO PADRÕES...";
+    
+    const formData = new FormData();
+    formData.append("file", fileInput.files[0]);
+    formData.append("consumo_padrao", 2.5);
+
+    try {
+        const res = await fetch('/processar-planilha', {
+            method: 'POST',
+            body: formData
+        });
+        const data = await res.json();
+        
+        document.getElementById('resultado-frota').classList.remove('hidden');
+        const lista = document.getElementById('lista-gargalos');
+        lista.innerHTML = "";
+        
+        data.gargalos_identificados.forEach(g => {
+            lista.innerHTML += `
+                <div class="p-3 bg-slate-900 rounded border-l-2 border-red-500 flex justify-between">
+                    <span>${g.rota}</span>
+                    <span class="text-red-400 font-bold">${g.perda_estimada}</span>
+                </div>`;
+        });
+        
+        alert("Padrões de desperdício identificados em " + data.resumo.total_viagens + " rotas.");
+    } catch (e) {
+        alert("Erro no processamento.");
+    } finally {
+        btn.innerText = "Processar Planilha de Viagens";
+    }
+}
+</script>
+</body>
+</html>
